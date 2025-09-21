@@ -11,7 +11,8 @@
 *.cb
 *.cb2
 .*.lb
-*.pdf
+supervised_learning/classification/slides/classification.pdf
+supervised_learning/bayes/slides/Bayes_supervised_slides.pdf
 
 ## Build tool auxiliary files:
 *.fdb_latexmk
