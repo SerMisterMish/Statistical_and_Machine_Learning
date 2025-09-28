@@ -301,7 +301,7 @@ $\mathrm{Ans}(X _m)$ вычисляет ответ для листа по поп
 \par\smallskip
 Следующий алгоритм:
 \begin{flalign*}
-	b_{\theta_2,2}(x)=\mathsf{argmin}_{\theta}\frac{1}{2}\sum_{i=1}^N(b_{\theta}(x_i)-s_i^{(1)})^2.
+	b_{\theta_2,2}(x)=\mathsf{argmin}_{\theta}\frac{1}{2}\sum_{i=1}^N\left(b_{\theta}(x_i)-s_i^{(1)}\right)^2.
 \end{flalign*}
 \par\smallskip
 И так далее. Заметим, что мы обучаемся на антиградиент:
@@ -377,7 +377,7 @@ $\eta$ --- шаг обучения.
 \par\smallskip
 Рассмотрим логистическую функцию потерь: 
 \begin{flalign*}
-	Q(a_M)=\sum_{i=1}^N\mathsf{ln}(1+e^{-y_ia_{M-1}(x_i)})e^{-y_i\gamma_Mb_{\theta_M, M}(x_i)}.
+	Q(a_M)=\sum_{i=1}^N\mathsf{ln}\left(1+e^{-y_ia_{M-1}(x_i)}\right)e^{-y_i\gamma_Mb_{\theta_M, M}(x_i)}.
 \end{flalign*}
 \par\smallskip
 Объекты с большим margin можно исключить.
