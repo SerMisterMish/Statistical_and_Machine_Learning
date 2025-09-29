@@ -39,11 +39,11 @@
 \textbf{Решающее дерево}~--- это бинарное дерево, где
 \begin{itemize}
 	\item во всех внутренних вершинах $v$ задан некоторый предикат $\beta_{v}: \mathbf{X} \to {0{,} 1}$,
-	\item в каждой листовой вершине $v$ задан прогноз $c_{v} \in \mathbf{Y}$ (возможно: $c_{v} \in \mathbb{R_{+}^{K}}$, \; $\displaystyle\sum_{k = 1}^{K} c_{v_{k}} = 1$).
+	\item в каждой листовой вершине $v$ задан прогноз $c_{v} \in \mathbf{Y}$ (для классификации возможно: $c_{v} \in \mathbb{R_{+}^{K}}$, \; $\displaystyle\sum_{k = 1}^{K} c_{v_{k}} = 1$~--- вектор вероятностей принадлежности к классу).
 \end{itemize}
 \par\smallskip
 \begin{figure}[h!]
-  \includegraphics[width=0.4 \textwidth]{detree}
+  \includegraphics[width=0.4 \textwidth]{img/detree}
  \caption{Решающее бинарное дерево}
  \end{figure}
 \end{frame}
@@ -83,7 +83,7 @@
 
 \begin{frame}{Решающие деревья в задаче регрессии}
 \begin{figure}[h!]
-  \includegraphics[width=1 \textwidth]{retree}
+  \includegraphics[width=1 \textwidth]{img/retree}
  \caption{Плохо обобщает закономерность и более склонна к переобучению}
  \end{figure}
 \end{frame}
@@ -108,43 +108,95 @@
 
 \begin{frame}{Решающие деревья в задаче классификации}
 \begin{figure}[h!]
-  \includegraphics[width=1 \textwidth]{cltree1}
+  \includegraphics[width=1 \textwidth]{img/cltree1}
  \caption{Информационные индексы M, G, CI в случае двух классов}
 \end{figure}
 \end{frame}
 
 \begin{frame}{Решающие деревья в задаче классификации}
 \begin{figure}[h!]
-  \includegraphics[width=0.9 \textwidth]{cltree2}
+  \includegraphics[width=0.9 \textwidth]{img/cltree2}
  \caption{Разделяющая граница дерева решений очень рваная и на ней много острых углов, что говорит о переобучении и слабой обобщающей способности}
 \end{figure}
 \end{frame}
 
 \begin{frame}{Жадный алгоритм построения решающего дерева}
-\begin{itemize}
-	\item Выбираем признак $j$ и порог $t$ так, чтобы разбиение $\mathbf{X}^{(n)}$ на $R_{1}(j, t) = \{x \in \mathbf{X}^{(n)}| \mathbf{X}_{j} < t\}$ и $R_{2}(j, t) = \{x \in \mathbf{X}^{(n)}| \mathbf{X}_{j} \geq t\}$ решало оптимизационную задачу:
-	\begin{flalign*}
-		\displaystyle\sum_{i: x_{i} \in R_{1}(j, t)} {(y_{i} - \hat{y}_{R_{1}})}^{2} + \displaystyle\sum_{i: x_{i} \in R_{2}(j, t)} {(y_{i} - \hat{y}_{R_{2}})}^{2} \rightarrow \min_{j, t},
-	\end{flalign*}
-где $\hat{y}_{R_{l}} = \frac{1}{|R_{l}|} \displaystyle\sum_{i: x_{i} \in R_{l}(j, t)} y_{i}, \;\;\; l = 1, 2$.
-	\item Разбиваем выборку на области $R_{1}$ и $R_{2}$, образуя две дочерние вершины.
-	\item Повторяем процедуру в пределах каждой получаемой области, пока не выполнится один из критериев останова.
-\end{itemize}
+Нахождение оптимального дерева~--- это NP-полная задача.
+
+Пусть $X$~--- исходное множество обучающей выборки, а $X _m$ — множество объектов, попавших в текущий лист (в самом начале $X _m = X$). Тогда жадный алгоритм можно верхнеуровнево описать следующим образом:
+
+\begin{enumerate}
+	\item Создаём вершину $v$;
+	\item Если выполнен критерий остановки $\mathrm{Stop}(X _m)$, то останавливаемся, объявляем эту вершину листом и ставим ей в соответствие ответ $\mathrm{Ans}(X _m)$, после чего возвращаем её;
+	\item Иначе: находим предикат $B _{j, t}$ (сплит), который определит наилучшее разбиение текущего множества объектов $X _m$ на две подвыборки $X _l$ и $X _r$, максимизируя критерий ветвления $\mathrm{Branch}(X _m, j, t)$;
+	\item Для $X _l$ и $X _r$ рекурсивно повторим процедуру.
+\end{enumerate}
+
+% \begin{itemize}
+% 	\item Выбираем признак $j$ и порог $t$ так, чтобы разбиение $\mathbf{X}^{(n)}$ на $R_{1}(j, t) = \{x \in \mathbf{X}^{(n)}| \mathbf{X}_{j} < t\}$ и $R_{2}(j, t) = \{x \in \mathbf{X}^{(n)}| \mathbf{X}_{j} \geq t\}$ решало оптимизационную задачу:
+% 	\begin{flalign*}
+% 		\displaystyle\sum_{i: x_{i} \in R_{1}(j, t)} {(y_{i} - \hat{y}_{R_{1}})}^{2} + \displaystyle\sum_{i: x_{i} \in R_{2}(j, t)} {(y_{i} - \hat{y}_{R_{2}})}^{2} \rightarrow \min_{j, t},
+% 	\end{flalign*}
+% где $\hat{y}_{R_{l}} = \frac{1}{|R_{l}|} \displaystyle\sum_{i: x_{i} \in R_{l}(j, t)} y_{i}, \;\;\; l = 1, 2$.
+% 	\item Разбиваем выборку на области $R_{1}$ и $R_{2}$, образуя две дочерние вершины.
+% 	\item Повторяем процедуру в пределах каждой получаемой области, пока не выполнится один из критериев останова.
+% \end{itemize}
 На выходе получаем дерево, в каждом из листов которого содержится по крайней мере один объект исходной выборки. 
 \end{frame}
 
-\begin{frame}{Критерии останова}
+\begin{frame}{Значение листа}
+$\mathrm{Ans}(X _m)$ вычисляет ответ для листа по попавшим в него объектам из обучающей выборки. Может быть:\medskip
+
+\begin{enumerate}
+	\item в случае задачи классификации — меткой самого частого класса или оценкой дискретного распределения вероятностей классов для объектов, попавших в этот лист;\medskip
+	\item в случае задачи регрессии — средним, медианой или другой статистикой;\medskip
+	\item простой моделью. К примеру, листы в дереве, задающем регрессию, могут быть линейными функциями или синусоидами, обученными на данных, попавших в лист.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Критерии остановки}
+Критерий остановки $\mathrm{Stop}(X _m)$~--- функция, которая решает, нужно ли продолжать ветвление или пора остановиться.
+
 \begin{itemize}
 	\item Ограничение максимальной глубины дерева.
 	\item Ограничение минимального числа объектов в листе.
 	\item Ограничение максимального количества листьев в дереве.
-	\item Останова в случае, если все объекты в листе относятся к одному классу.
-	\item Останова в случае, если изменение метрики меньше
- порога.
+	\item Остановка в случае, если все объекты в листе относятся к одному классу.
+	\item Остановка в случае, если изменение метрики меньше порога.
 \end{itemize}
 \begin{remark}
 	Для очень глубоких деревьев имеем переобучение.
 \end{remark}
+\end{frame}
+
+\begin{frame}{Критерий ветвления}
+	$\mathrm{Branch} (X _m, \text{feature}, \text{value})$~--- функция, измеряющая, насколько улучшится финальная метрика дерева при предлагаемом сплите.
+
+	Пусть $L (y _i, c)$~--- функция потерь, $c$~--- константное предсказание. Информативность узла (хотим минимизировать):
+	\[
+	H (X _m) = \frac 1 {|X _m|} \sum _{(x _i, y _i) \in X _m} L (y _i, c).
+	\]
+	Если разделить на два узла:
+	\[
+	\begin{aligned}
+		&\frac 1 {|X _m|} \left(\sum _{(x _i, y _i) \in X _l} L (y _i, c _l) + \sum _{(x _i, y _i) \in X _r} L (y _i, c)\right) =\\
+		&= \frac {|X _l|} {|X _m|} H (X _l) + \frac {|X _r|} {|X _m|} H (X _r).
+	\end{aligned}
+	\]
+\end{frame}
+
+\begin{frame}{Критерий ветвления}
+	Тогда критерий ветвления:
+	\[
+	\mathrm{Branch} (X _m, j, t) = |X _m| \cdot H(X _m) - |X _l| \cdot H(X _l) - |X _r| \cdot H(X _r).
+	\]
+	Чем больше изменение метрики, тем лучше.
+
+	\begin{itemize}
+		\item MSE: $L (y _i, c) = (y _i - c) ^2$, $H (X _m) = \sum \limits _{(x _i, y _i) \in X _m} \frac {(y _i - \overline{y}) ^2} {|X _m|}$;
+		\item MAE: $L (y _i, c) = |y _i - c|$, $H (X _m) = \sum \limits _{(x _i, y _i) \in X _m} \frac {|y _i - \mathrm{MEDIAN}(Y _m)|} {|X _m|}$;
+		\item Для классификации можно рассматривать: misclassification error ($H (X _m) = 1 - \max p _i$, $p _i$~--- доля класса $i$), энтропию ($H (X _m) = - \sum ^K _{k = 1} p _k \log p_k$) или критерий Джини ($H (X _m) = \sum ^K _{k = 1} p _k (1 - p_k)$).
+	\end{itemize}
 \end{frame}
 
 \begin{frame}{Стрижка деревьев(pruning tree)}
@@ -197,7 +249,7 @@
 \end{itemize}
 \par\smallskip
 \begin{figure}[h!]
-  \includegraphics[width=0.7 \textwidth]{bootstrap}
+  \includegraphics[width=0.7 \textwidth]{img/bootstrap}
 \end{figure}
 \end{frame}
 
@@ -250,7 +302,7 @@
 \begin{frame}{Bagging}
 \textbf{Bagging}~--- метод, который позволяет уменьшить разброс модели. Этот метод обучает некоторое число алгоритмов так, что каждый алгоритм обучается на отдельных выборках, которые получены из исходной с помощью bootstrap.
 \begin{figure}[h!]
-  \includegraphics[width=0.9 \textwidth]{bagging}
+  \includegraphics[width=0.9 \textwidth]{img/bagging}
  \caption{Схема реализации bagging}
 \end{figure}
 
@@ -275,14 +327,14 @@
 
 \begin{frame}{Bagging в задаче регрессии}
 \begin{figure}[h!]
-  \includegraphics[width=1 \textwidth]{bagging_re}
+  \includegraphics[width=1 \textwidth]{img/bagging_re}
  \caption{Лучше обобщает закономерность и менее склонна к переобучению, чем любое отдельное дерево}
 \end{figure}
 \end{frame}
 
 \begin{frame}{Bagging в задаче классификации}
 \begin{figure}[h!]
-  \includegraphics[width=1 \textwidth]{bagging_cl}
+  \includegraphics[width=1 \textwidth]{img/bagging_cl}
  \caption{Граница сглаженная и практически нет признаков переобучения}
 \end{figure}
 \end{frame}
@@ -311,14 +363,14 @@
 
 \begin{frame}{Random forest в задаче регрессии}
 \begin{figure}[h!]
-  \includegraphics[width=0.8 \textwidth]{rf_re}
+  \includegraphics[width=0.8 \textwidth]{img/rf_re}
  \caption{Различие случайного леса и бэггинга на деревьях решений заключается в том, что в случайном лесе выбирается случайное подмножество признаков, и лучший признак для разделения узла определяется из подвыборки признаков, в отличие от бэггинга, где все функции рассматриваются для разделения в узле}
 \end{figure}
 \end{frame}
 
 \begin{frame}{Random forest в задаче классификации}
 \begin{figure}[h!]
-  \includegraphics[width=1 \textwidth]{rf_cl}
+  \includegraphics[width=1 \textwidth]{img/rf_cl}
  \caption{Граница сглаженная и практически нет признаков переобучения}
 \end{figure}
 \end{frame}
