@@ -1,0 +1,490 @@
+---
+title: "Decision Tree, Random Forest, Boosting"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Decision Tree
+
+Необходимые библиотеки для построения и визуализации Decision Tree:
+
+```{r}
+library(rpart)
+library(caTools)
+library(ggplot2)
+library(dplyr)
+```
+
+
+Набор данных, содержащий информацию о том, что покупает ли человек товар на основе своего возраста и предполагаемой зарплаты. Мы имеем 400 наблюдений и 5 переменных. 
+
+**User.ID** --- идентификатор пользователя (числовая).
+
+**Gender** --- пол пользователя (категориальная).
+
+**Age** --- возраст пользователя (числовая).
+
+**EstimatedSalary** --- предполагаемая зарплата пользователя (числовая).
+
+**Purchased** --- бинарный показатель покупки (0 = не купил, 1 = купил).
+
+```{r}
+dataset <- read.csv("C:\\Users\\Dolan\\Desktop\\R\\detree_rf_boost\\data.csv")
+head(dataset, 20)
+```
+
+
+Разбиваем набор данных на обучающий и тестовый набор.
+
+
+**factor()** --- преобразует числовую переменную в категориальную переменную.
+
+**sample.split()** --- разбивает данные на обучающую и тестовую выборки.
+
+**subset()** --- создает подмножества данных на основе условия.
+
+```{r}
+dataset$Purchased <- factor(dataset$Purchased, levels = c(0, 1))
+
+set.seed(123)
+split <- sample.split(dataset$Purchased, SplitRatio = 0.75)
+training_set <- subset(dataset, split == TRUE)
+test_set <- subset(dataset, split == FALSE)
+
+training_set_original <- training_set
+test_set_original <- test_set
+
+```
+
+
+Стандартизируем числовые признаки, чтобы гарантировать, что все значения имеют одинаковый масштаб.
+
+**scale()** --- нормализует числовые значения до среднего значения 0 и стандартного отклонения 1.
+
+```{r}
+training_set[c("Age", "EstimatedSalary")] <- scale(training_set[c("Age", "EstimatedSalary")])
+test_set[c("Age", "EstimatedSalary")] <- scale(test_set[c("Age", "EstimatedSalary")])
+
+training_set_original[c("Age", "EstimatedSalary")] <- dataset[split == TRUE, c("Age", "EstimatedSalary")]
+test_set_original[c("Age", "EstimatedSalary")] <- dataset[split == FALSE, c("Age", "EstimatedSalary")]
+```
+
+
+Обучаем классификатор дерева решений на обучающих данных:
+
+```{r}
+classifier <- rpart(formula = Purchased ~ Age + EstimatedSalary,
+                    data = training_set,
+                    method = "class")
+
+classifier_original <- rpart(formula = Purchased ~ Age + EstimatedSalary,
+                    data = training_set_original,
+                    method = "class")
+```
+
+
+Прогнозируем метки классов для тестовых данных с помощью обученной модели:
+
+```{r}
+y_pred <- predict(classifier, newdata = test_set[c("Age", "EstimatedSalary")], type = "class")
+```
+
+
+Создаем матрицу несоответствий и визуализируем ее, чтобы понять производительность модели:
+
+```{r}
+cm <- table(test_set$Purchased, y_pred)
+print(cm)
+
+cm_df <- as.data.frame(cm)
+colnames(cm_df) <- c("Actual", "Predicted", "Freq")
+
+ggplot(cm_df, aes(x = Predicted, y = Actual)) +
+  geom_tile(aes(fill = Freq), color = "white") +
+  geom_text(aes(label = Freq), vjust = 0.5, fontface = "bold", size = 5) +
+  scale_fill_gradient(low = "lightblue", high = "steelblue") +
+  labs(title = "Confusion Matrix", x = "Predicted Label", y = "Actual Label") +
+  theme_minimal()
+```
+
+
+Визуализация границ принятия решений (обучающий набор):
+
+```{r}
+x_min <- min(training_set_original$Age) - 1
+x_max <- max(training_set_original$Age) + 1
+y_min <- min(training_set_original$EstimatedSalary) - 1000
+y_max <- max(training_set_original$EstimatedSalary) + 1000
+
+grid_set <- expand.grid(
+  Age = seq(x_min, x_max, by = 0.1),
+  EstimatedSalary = seq(y_min, y_max, length.out = 100)
+)
+
+grid_set$Purchased <- predict(classifier_original, newdata = grid_set, type = "class")
+
+ggplot() +
+  geom_point(data = grid_set, aes(x = Age, y = EstimatedSalary, color = Purchased), alpha = 0.2) +
+  geom_point(data = training_set_original, aes(x = Age, y = EstimatedSalary, shape = Purchased, fill = Purchased), size = 2) +
+  labs(title = "Decision Tree Classification (Training Set) - Real Values", 
+       x = "Age", y = "Estimated Salary") +
+  scale_color_manual(values = c("tomato", "springgreen3")) +
+  scale_fill_manual(values = c("red3", "green4")) +
+  scale_y_continuous(labels = scales::comma) +  # Форматирование зарплаты
+  theme_minimal()
+```
+
+
+Визуализация границ принятия решений (тестовый набор):
+
+```{r}
+x_min <- min(test_set_original$Age) - 1
+x_max <- max(test_set_original$Age) + 1
+y_min <- min(test_set_original$EstimatedSalary) - 1000
+y_max <- max(test_set_original$EstimatedSalary) + 1000
+
+grid_set <- expand.grid(
+  Age = seq(x_min, x_max, by = 0.1),
+  EstimatedSalary = seq(y_min, y_max, length.out = 100)
+)
+
+grid_set$Purchased <- predict(classifier_original, newdata = grid_set, type = "class")
+
+ggplot() +
+  geom_point(data = grid_set, aes(x = Age, y = EstimatedSalary, color = Purchased), alpha = 0.2) +
+  geom_point(data = test_set_original, aes(x = Age, y = EstimatedSalary, shape = Purchased, fill = Purchased), size = 2) +
+  labs(title = "Decision Tree Classification (Test Set) - Real Values", 
+       x = "Age", y = "Estimated Salary") +
+  scale_color_manual(values = c("tomato", "springgreen3")) +
+  scale_fill_manual(values = c("red3", "green4")) +
+  scale_y_continuous(labels = scales::comma) +  # Форматирование зарплаты
+  theme_minimal()
+```
+
+
+Визуализация дерева принятия решений:
+
+Ниже показано **Decision Tree**, которое классифицирует, купит ли человек товар на основе его возраста и предполагаемой зарплаты. Сначала проверяется возраст, а затем идет дополнительное разделение на основе значений заработной платы. Каждый путь заканчивается прогнозом класса 0 или 1, представляющим окончательное решение модели.
+
+```{r}
+library(rpart.plot)
+rpart.plot(classifier_original, 
+           type = 3, 
+           extra = 104, 
+           fallen.leaves = TRUE,
+           box.palette = "BuRd",
+           shadow.col = "gray")
+```
+
+
+## Random Forest
+
+```{r}
+library(randomForest)
+```
+
+
+Обучаем классификатор случайного леса на обучающих данных:
+
+```{r}
+set.seed(123)
+rf_classifier <- randomForest(x = training_set[c("Age", "EstimatedSalary")],
+                              y = training_set$Purchased,
+                              ntree = 500)
+
+rf_classifier_original <- randomForest(x = training_set_original[c("Age", "EstimatedSalary")],
+                                       y = training_set_original$Purchased,
+                                       ntree = 500)
+```
+
+
+Прогнозируем метки классов для тестовых данных с помощью обученной модели:
+
+```{r}
+y_pred_rf <- predict(rf_classifier, newdata = test_set[c("Age", "EstimatedSalary")])
+```
+
+
+Создаем матрицу несоответствий и визуализируем ее:
+
+```{r}
+cm_rf <- table(test_set$Purchased, y_pred_rf)
+print(cm_rf)
+
+cm_rf_df <- as.data.frame(cm_rf)
+colnames(cm_rf_df) <- c("Actual", "Predicted", "Freq")
+
+ggplot(cm_rf_df, aes(x = Predicted, y = Actual)) +
+  geom_tile(aes(fill = Freq), color = "white") +
+  geom_text(aes(label = Freq), vjust = 0.5, fontface = "bold", size = 5) +
+  scale_fill_gradient(low = "lightblue", high = "steelblue") +
+  labs(title = "Random Forest - Confusion Matrix", x = "Predicted Label", y = "Actual Label") +
+  theme_minimal()
+```
+
+
+Визуализация границ принятия решений (обучающий набор):
+
+```{r}
+x_min <- min(training_set_original$Age) - 1
+x_max <- max(training_set_original$Age) + 1
+y_min <- min(training_set_original$EstimatedSalary) - 1000
+y_max <- max(training_set_original$EstimatedSalary) + 1000
+
+grid_set <- expand.grid(
+  Age = seq(x_min, x_max, by = 0.1),
+  EstimatedSalary = seq(y_min, y_max, length.out = 100)
+)
+
+grid_set$Purchased <- predict(rf_classifier_original, newdata = grid_set)
+
+ggplot() +
+  geom_point(data = grid_set, aes(x = Age, y = EstimatedSalary, color = Purchased), alpha = 0.2) +
+  geom_point(data = training_set_original, aes(x = Age, y = EstimatedSalary, shape = Purchased, fill = Purchased), size = 2) +
+  labs(title = "Random Forest Classification (Training Set) - Real Values", 
+       x = "Age", y = "Estimated Salary") +
+  scale_color_manual(values = c("tomato", "springgreen3")) +
+  scale_fill_manual(values = c("red3", "green4")) +
+  scale_y_continuous(labels = scales::comma) +
+  theme_minimal()
+```
+
+
+Визуализация границ принятия решений (тестовый набор):
+
+```{r}
+x_min <- min(test_set_original$Age) - 1
+x_max <- max(test_set_original$Age) + 1
+y_min <- min(test_set_original$EstimatedSalary) - 1000
+y_max <- max(test_set_original$EstimatedSalary) + 1000
+
+grid_set <- expand.grid(
+  Age = seq(x_min, x_max, by = 0.1),
+  EstimatedSalary = seq(y_min, y_max, length.out = 100)
+)
+
+grid_set$Purchased <- predict(rf_classifier_original, newdata = grid_set)
+
+ggplot() +
+  geom_point(data = grid_set, aes(x = Age, y = EstimatedSalary, color = Purchased), alpha = 0.2) +
+  geom_point(data = test_set_original, aes(x = Age, y = EstimatedSalary, shape = Purchased, fill = Purchased), size = 2) +
+  labs(title = "Random Forest Classification (Test Set) - Real Values", 
+       x = "Age", y = "Estimated Salary") +
+  scale_color_manual(values = c("tomato", "springgreen3")) +
+  scale_fill_manual(values = c("red3", "green4")) +
+  scale_y_continuous(labels = scales::comma) +
+  theme_minimal()
+```
+
+
+Оценим важность каждой переменной:
+
+```{r}
+importance_rf <- importance(rf_classifier_original)
+varImpPlot(rf_classifier_original, 
+           main = "Variable Importance in Random Forest",
+           col = "steelblue")
+
+print(importance_rf)
+```
+
+
+Точность **Decision Tree**:
+```{r}
+dt_accuracy <- sum(diag(cm)) / sum(cm)
+cat("Decision Tree Accuracy:", dt_accuracy, "\n")
+```
+
+
+Точность **Random Forest**:
+```{r}
+# Точность Random Forest
+rf_accuracy <- sum(diag(cm_rf)) / sum(cm_rf)
+cat("Random Forest Accuracy:", rf_accuracy, "\n")
+```
+
+
+Сравнение точности **Decision Tree** и **Random Forest**:
+```{r}
+if(rf_accuracy > dt_accuracy) {
+  cat("Random Forest показал лучшую производительность на", round((rf_accuracy - dt_accuracy) * 100, 2), "%\n")
+} else {
+  cat("Decision Tree показал лучшую производительность на", round((dt_accuracy - rf_accuracy) * 100, 2), "%\n")
+}
+```
+
+
+## Boosting (AdaBoost)
+
+```{r}
+library(adabag)
+```  
+
+
+Обучаем классификатор **AdaBoost** на обучающих данных:
+
+```{r}
+set.seed(123)
+ada_classifier <- boosting(Purchased ~ Age + EstimatedSalary,
+                          data = training_set,
+                          boos = TRUE,
+                          mfinal = 50)
+
+ada_classifier_original <- boosting(Purchased ~ Age + EstimatedSalary,
+                                   data = training_set_original,
+                                   boos = TRUE,
+                                   mfinal = 50)
+```
+
+
+Прогнозируем метки классов для тестовых данных с помощью обученной модели:
+
+```{r}
+y_pred_ada <- predict(ada_classifier, newdata = test_set[c("Age", "EstimatedSalary")])
+y_pred_ada_class <- y_pred_ada$class
+```
+
+
+Создаем матрицу несоответствий и визуализируем ее:
+
+```{r}
+cm_ada <- table(test_set$Purchased, y_pred_ada_class)
+print(cm_ada)
+
+cm_ada_df <- as.data.frame(cm_ada)
+colnames(cm_ada_df) <- c("Actual", "Predicted", "Freq")
+
+ggplot(cm_ada_df, aes(x = Predicted, y = Actual)) +
+  geom_tile(aes(fill = Freq), color = "white") +
+  geom_text(aes(label = Freq), vjust = 0.5, fontface = "bold", size = 5) +
+  scale_fill_gradient(low = "lightblue", high = "steelblue") +
+  labs(title = "AdaBoost - Confusion Matrix", x = "Predicted Label", y = "Actual Label") +
+  theme_minimal()
+```
+
+
+Визуализация границ принятия решений (обучающий набор):
+
+```{r}
+x_min <- min(training_set_original$Age) - 1
+x_max <- max(training_set_original$Age) + 1
+y_min <- min(training_set_original$EstimatedSalary) - 1000
+y_max <- max(training_set_original$EstimatedSalary) + 1000
+
+grid_set <- expand.grid(
+  Age = seq(x_min, x_max, by = 0.1),
+  EstimatedSalary = seq(y_min, y_max, length.out = 100)
+)
+
+grid_pred <- predict(ada_classifier_original, newdata = grid_set)
+grid_set$Purchased <- grid_pred$class
+
+ggplot() +
+  geom_point(data = grid_set, aes(x = Age, y = EstimatedSalary, color = Purchased), alpha = 0.2) +
+  geom_point(data = training_set_original, aes(x = Age, y = EstimatedSalary, shape = Purchased, fill = Purchased), size = 2) +
+  labs(title = "AdaBoost Classification (Training Set) - Real Values", 
+       x = "Age", y = "Estimated Salary") +
+  scale_color_manual(values = c("tomato", "springgreen3")) +
+  scale_fill_manual(values = c("red3", "green4")) +
+  scale_y_continuous(labels = scales::comma) +
+  theme_minimal()
+```
+
+
+Визуализация границ принятия решений (тестовый набор):
+
+```{r}
+x_min <- min(test_set_original$Age) - 1
+x_max <- max(test_set_original$Age) + 1
+y_min <- min(test_set_original$EstimatedSalary) - 1000
+y_max <- max(test_set_original$EstimatedSalary) + 1000
+
+grid_set <- expand.grid(
+  Age = seq(x_min, x_max, by = 0.1),
+  EstimatedSalary = seq(y_min, y_max, length.out = 100)
+)
+
+grid_pred <- predict(ada_classifier_original, newdata = grid_set)
+grid_set$Purchased <- grid_pred$class
+
+ggplot() +
+  geom_point(data = grid_set, aes(x = Age, y = EstimatedSalary, color = Purchased), alpha = 0.2) +
+  geom_point(data = test_set_original, aes(x = Age, y = EstimatedSalary, shape = Purchased, fill = Purchased), size = 2) +
+  labs(title = "AdaBoost Classification (Test Set) - Real Values", 
+       x = "Age", y = "Estimated Salary") +
+  scale_color_manual(values = c("tomato", "springgreen3")) +
+  scale_fill_manual(values = c("red3", "green4")) +
+  scale_y_continuous(labels = scales::comma) +
+  theme_minimal()
+```
+
+
+Оценим важность каждой переменной:
+
+```{r}
+importance_ada <- ada_classifier_original$importance
+importance_df <- data.frame(
+  Variable = names(importance_ada),
+  Importance = importance_ada
+)
+
+ggplot(importance_df, aes(x = reorder(Variable, Importance), y = Importance)) +
+  geom_bar(stat = "identity", fill = "steelblue", alpha = 0.7) +
+  coord_flip() +
+  labs(title = "Variable Importance in AdaBoost", 
+       x = "Variable", 
+       y = "Importance") +
+  theme_minimal()
+
+print(importance_ada)
+```
+
+
+Точность **AdaBoost**:
+```{r}
+ada_accuracy <- sum(diag(cm_ada)) / sum(cm_ada)
+cat("AdaBoost Accuracy:", ada_accuracy, "\n")
+```
+
+
+Сравнение точности всех трех моделей:
+
+```{r}
+cat("Decision Tree Accuracy:", dt_accuracy, "\n")
+cat("Random Forest Accuracy:", rf_accuracy, "\n")
+cat("AdaBoost Accuracy:", ada_accuracy, "\n")
+
+accuracies <- c(dt_accuracy, rf_accuracy, ada_accuracy)
+models <- c("Decision Tree", "Random Forest", "AdaBoost")
+best_model <- models[which.max(accuracies)]
+best_accuracy <- max(accuracies)
+
+cat("\nЛучшая модель:", best_model, "с точностью", round(best_accuracy * 100, 2), "%\n")
+
+comparison_df <- data.frame(
+  Model = models,
+  Accuracy = accuracies
+)
+
+ggplot(comparison_df, aes(x = reorder(Model, Accuracy), y = Accuracy)) +
+  geom_bar(stat = "identity", aes(fill = Model), alpha = 0.8) +
+  geom_text(aes(label = paste0(round(Accuracy * 100, 1), "%")), 
+            hjust = -0.1, size = 5, fontface = "bold") +
+  scale_fill_manual(values = c("Decision Tree" = "tomato", 
+                              "Random Forest" = "steelblue", 
+                              "AdaBoost" = "springgreen3")) +
+  labs(title = "Сравнение точности моделей", 
+       x = "Модель", 
+       y = "Точность") +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  coord_flip() +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+
+
