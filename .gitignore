@@ -11,9 +11,6 @@
 *.cb
 *.cb2
 .*.lb
-supervised_learning/classification/slides/classification.pdf
-supervised_learning/bayes/slides/Bayes_supervised_slides.pdf
-supervised_learning/detree_rf_boost/slides/tree.pdf
 
 
 ## Build tool auxiliary files:
