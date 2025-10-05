@@ -11,6 +11,8 @@
 *.cb
 *.cb2
 .*.lb
+aux
+out
 
 
 ## Build tool auxiliary files:
@@ -23,8 +25,13 @@
 *.rubbercache
 rubber.cache
 
-# beamer
+## beamer
 *.nav
 *.pre
 *.snm
 *.vrb
+
+
+## python temporary files/venv
+.venv
+__pycache__
