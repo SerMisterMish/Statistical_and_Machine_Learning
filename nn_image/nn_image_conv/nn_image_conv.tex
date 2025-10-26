@@ -88,7 +88,7 @@
 
 \begin{frame}{Пример свёрток}
     \begin{columns}
-        \begin{column}{0.5\textwidth}
+        \begin{column}{0.4\textwidth}
             \[
                 B _1 = \frac {1} {9} \begin{pmatrix}
                     1 & 1 & 1\\
@@ -99,7 +99,7 @@
             Усредняет все пиксели размывая изображение.
         \end{column}
 
-        \begin{column}{0.6\textwidth}
+        \begin{column}{0.7\textwidth}
             \[
                 B _2 = \begin{pmatrix}
                     -1 & -1 & -1\\
@@ -115,6 +115,8 @@
     \begin{figure}
         \includegraphics[width=\textwidth]{img/conv_example.jpg}
     \end{figure}
+
+    Заметим, что свёртки можно воспринимать, как фильтры, применяемые последовательно к изображению.
 \end{frame}
 
 \begin{frame}{Каналы и свёртки}
@@ -132,7 +134,7 @@
     Хотим повысить количество каналов в каждой свёртке, чтобы выделять больше признаков. Проблема: слишком много параметров, решение: уменишить разрешение каждого канала.
 
     \begin{itemize}
-        \item Max Pooling — берёт максимум из области;
+        \item Max Pooling — берёт максимум из области (сохраняет наиболее важные признаки);
         \item Average Pooling — усреднение значений;
         \item Снижает вычислительные затраты и переобучение.
     \end{itemize}
@@ -150,6 +152,14 @@
     \end{enumerate}
 
     Для проблем с затуханием используем Residual connection.
+
+    \textbf{Регуляризация}
+    \begin{itemize}
+        \item L1/L2, DropOut;
+        \item Аугментация --- применение операций сдвига, поворота и т.д.;
+        \item Label smoothing --- предсказание сглаженного варианта One hot метки;
+        \item Mixup --- выпуклая комбинация двух картинок и их лейблов.
+    \end{itemize}
 \end{frame}
 
 \begin{frame}{Задача классификации}
@@ -216,10 +226,30 @@
         \item LeNet (1998) (7 слоёв) --- первая свёрточная нейронная сеть, показавшая SOTA результаты на MNIST. Cвёрточные слои с ядром 5x5. Активация --- tanh, вместо max-pool --- average;
         \item AlexNet (2012) (11 слоёв) --- первая CNN, взявшая imagenet. ReLU вместо сигмоид, max-pool вместо average. Обучение на двух GPU;
         \item VGGNet (2014) (19 слоёв) --- ввели стандарт свёрток $3 \times 3$ и последовательное выполнение их с нелинейностями;
-        \item ResNet (2015) (152 слоя) --- нынешний baseline, ввели skip connections и свёртки $1 \times 1$.
     \end{itemize}
+
+    \begin{figure}
+        \includegraphics[width=0.6\linewidth]{img/vggnet.png}    
+    \end{figure}
+\end{frame}
+
+\begin{frame}{ResNet}
+    ResNet (2015) (152 слоя) --- нынешний baseline, ввели residual connections и свёртки $1 \times 1$, которые сокращают каналы и добавляют обобщение признаков.
     \begin{figure}
         \includegraphics[width=\linewidth]{img/resnet.png}    
+    \end{figure}
+    Выше представлен residual block, который не даёт градиентам затухать.
+\end{frame}
+
+\begin{frame}{EfficientNet}
+    EfficientNet (2019) --- серия нейронных сетей (B0-B7, V2), в которых применена идея автоматического поиска архитектуры NAS.
+
+    Имеет большую производительность при меньшем количестве параметров по сравнению с ResNet.
+
+    Подходит для промышленного использования, когда важны баланс между точностью и ресурсами.
+
+    \begin{figure}
+        \includegraphics[width=0.8\linewidth]{img/efficientnet.png}    
     \end{figure}
 \end{frame}
 
@@ -252,11 +282,13 @@
 
 \begin{frame}{Виды сегментации}
     \begin{figure}
-        \includegraphics[width=0.7\linewidth]{img/segmentation_kind.png}        
+        \includegraphics[width=0.75\linewidth]{img/segmentation_kind.png}        
     \end{figure}
+    \small
     \begin{itemize}
-        \item Семантическая сегментация --- классифицирует каждый пиксель по классу, не различая экземпляры (все кошки = один класс);
+        \item Семантическая сегментация --- классифицирует каждый пиксель, не различая экземпляры (все кошки = один класс);
         \item Инстанс-сегментация --- различает отдельные экземпляры объектов одного класса (каждая кошка — отдельный объект);
+        \item Детекция --- выделение объектов прямоугольниками с классификацией;
         \item Паноптическая сегментация --- объединяет семантическую и инстанс-сегментацию (сцена со всеми типами объектов).
     \end{itemize}
 \end{frame}
@@ -291,9 +323,27 @@
     \end{figure}
 
     \begin{itemize}
-        \item Использует dilated convolutions
-        \item Применяет CRF для уточнения границ объектов
-        \item Высокая точность на сложных сценах
+        \item Использует dilated convolutions (увеличение receptive field без потери разрешения);
+        \item Применяет CRF (разновидность марковского случайного поля) для уточнения границ объектов;
+        \item Высокая точность на сложных сценах.
+    \end{itemize}
+\end{frame}
+
+\begin{frame}{YOLO (v1-v12) (2015-2025)}
+    Модель детекции объектов на изображении в реальном времени.
+
+    \begin{itemize}
+        \item Изображение делится на сетку $S \times S$;
+        \item В каждой ячейке предсказывается $B$ ограничивающих прямоугольников, вероятность объека $P(\text{obj})$ и распределение вероятностей классов $P(\text{class}|\text{obj})$;
+        \item Используется составной loss:
+        \[
+            \begin{aligned}
+                \mathcal{L} =& \lambda _{\text{coord}} \sum (x - \hat{x}) ^2 + (y - \hat{y}) ^2 +\\
+                &+ \lambda _{\text{coord}} \sum (\sqrt{w} - \sqrt{\hat{w}}) ^2 + (\sqrt{h} - \sqrt{\hat{h}}) ^2 +\\
+                &+ \sum (p _{\text{obj}} - \hat{p} _{\text{obj}})^2 + \sum (p _{\text{cls}} - \hat{p} _{\text{cls}}) ^2
+            \end{aligned};
+        \]
+        \item Очень высокая скорость и компактность.
     \end{itemize}
 \end{frame}
 
@@ -311,6 +361,15 @@
             \text{Dice Loss} = 1 - \text{Dice}
         \]
     \end{enumerate}
+\end{frame}
+
+\begin{frame}{Pretrain NN}
+    \begin{itemize}
+        \item Обучение модели с нуля не всегда бывает оправданным: на это требуется много времени и ресурсов;
+        \item Чтобы избежать этого следует использовать предобученные сети, которые обучались на большом объёме общих данных и уже имеют некоторое понятие \glqq о мире\grqq;
+        \item Если мы имеем дело со специфичной задачей, то предобученную сеть можно \glqq дообучить\grqq~ (fine-tuning) на нашей задаче, используя наш датасет и применяя оптимизацию параметров на нём;
+        \item Дообучение претрейн модели происходит быстрее, так как модель уже выучила общие зависимости и осталось только подогнать параметры под конкретную задачу.
+    \end{itemize}
 \end{frame}
 
 \end{document}
