@@ -25,6 +25,7 @@ out
 *.rubbercache
 rubber.cache
 
+
 ## beamer
 *.nav
 *.pre
@@ -35,3 +36,8 @@ rubber.cache
 ## python temporary files/venv
 .venv
 __pycache__
+.ipynb_checkpoints
+
+
+nn_image/nn_image_conv/data/oxford-iiit-pet
+nn_image/nn_image_conv/data/cifar-10-batches-py
