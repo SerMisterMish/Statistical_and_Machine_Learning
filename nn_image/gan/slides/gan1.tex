@@ -1,0 +1,341 @@
+\documentclass[notheorems, handout]{beamer}
+
+\usetheme{Warsaw}
+\setbeamertemplate{page number in head/foot}[totalframenumber]
+\setbeamertemplate{headline}{}
+\setbeamertemplate{navigation symbols}{}
+\usefonttheme[onlymath]{serif}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T2A]{fontenc}
+\usepackage[russian]{babel}
+
+\usepackage{graphicx,subcaption,ragged2e}
+\usepackage{tikz}
+\usepackage{bm}
+\usepackage{amsfonts}
+
+\newtheorem{theorem}{Теорема}
+\newtheorem{definition}{Определение}
+\newtheorem{remark}{Вывод}
+
+\title[Статистическое и машинное обучение]{Генеративные нейронные сети}
+
+\institute[Санкт-Петербургский Государственный Университет]{%
+	\small
+	Санкт-Петербургский государственный университет\\
+	Кафедра статистического моделирования
+}
+
+\date[Сентябрь 2025]{Санкт-Петербург, 2025}
+
+\begin{document}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+\begin{frame}{Введение}
+\textbf{Генеративные сети} или \textbf{генеративно-состязательные сети (Generative Adversarial Networks, GAN)}~--- это нейронные сети, которые учатся генерировать реалистичные образцы данных, на которых они обучались.
+\par\smallskip
+\begin{figure}[h!]
+  \includegraphics[width=0.8 \textwidth]{pict_1}
+ \caption{Архитектура \textbf{GAN}}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Архитектура GAN}
+\textbf{GAN} состоит из двух частей:
+\begin{enumerate}
+	\item \textbf{Генератор}~--- это нейронная сеть, которая создает новые данные, основываясь на случайном шуме. 
+\par\smallskip	
+	\textbf{Задача}: генерировать данные, которые настолько похожи на реальные, что дискриминатор не сможет отличить их от настоящих. 
+	\item \textbf{Дискриминатор}~--- это нейронная сеть, которая оценивает данные и пытается определить, являются ли они реальными или сгенерированными. 
+\par\smallskip	
+	\textbf{Задача}: стать настолько точным, чтобы уметь различать настоящие данные и подделки, созданные генератором.
+\end{enumerate}
+\par\medskip
+Принцип работы \textbf{GAN} можно описать как состязание между генератором и дискриминатором. Генератор пытается обмануть дискриминатор, создавая реалистичные данные, в то время как дискриминатор пытается улучшить свои навыки различения.
+\end{frame}
+
+\begin{frame}{Постановка задачи дискриминатора}
+Имеем следующие параметры:
+\begin{enumerate}
+	\item $x$~--- реальные данные, $z$~--- шумовой вектор, $\hat{x} = G_{\theta}(z)$~--- сгенерированные данные;
+	\item $p(x)$~--- распределение реальных данных, $p(z)$~---  априорное распределение шума;
+	\item $G_{\theta}$~--- генератор с параметром $\theta$. Генератор отображает векторы $z \sim \mathcal{N}(0,\, I)$ в $\hat{x} \sim q(x)$, распределение которых приближает реальное распределение данных p(x);
+	\item $D_{\phi}$~--- дискриминатор с парамтером $\phi$. Дискриминатор каждому реальному сэмплу $x$ и фейковому $\hat{x}$ ставит в соответствие вероятность $D(x)$, которая оценивает степень принадлежности $x$ к реальным данным,  то есть он решает задачу бинарной классификации. Решим при помощи минимизации бинарной кросс-энтропии:
+	\begin{flalign*}
+		\underset{\phi}{\min}\;\mathbb{E}_{x \sim p(x)} - \log{D_{\phi}(x)} + \mathbb{E}_{\hat{x} \sim q(x)} - \log{[1 - D_{\phi}(\hat{x})]}.
+	\end{flalign*}	
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Постановка задачи генератора}
+Учитывая обозначение $\hat{x} = G_{\theta}(z)$, и то, что мы пытаемся максимизировать вероятность принадлежности к реальным данным, как её оценивает дискриминатор, задачу, которую решает генератор, можно расписать так:
+\begin{flalign*}
+	\theta^{*} = \underset{\theta}{\operatorname{argmax}}\;\mathbb{E}_{z \sim p(z)}D_{\theta}(G_{\theta}(z)) =  
+\end{flalign*}
+\begin{flalign*}
+	= \underset{\theta}{\operatorname{argmin}}\;\mathbb{E}_{z \sim p(z)} - D_{\theta}(G_{\theta}(z)) =
+\end{flalign*}	
+\begin{flalign*}
+	= \underset{\theta}{\operatorname{argmin}}\;\mathbb{E}_{z \sim p(z)}[1 - D_{\theta}(G_{\theta}(z))] =
+\end{flalign*}
+\begin{flalign*}
+	= \underset{\theta}{\operatorname{argmin}}\;\mathbb{E}_{z \sim p(z)}\log{[1 - D_{\theta}(G_{\theta}(z))]} =
+\end{flalign*}
+\begin{flalign*}
+	= \underset{\theta}{\operatorname{argmax}}\;\mathbb{E}_{z \sim p(z)} - \log{[1 - D_{\theta}(G_{\theta}(z))]}.
+\end{flalign*}
+\end{frame}
+
+\begin{frame}{Постановка задачи генератора и дискриминатора}
+Это равенство позволяет записать задачи, которые решают генератор и дискриминатор, вместе (избавимся от лишних минусов, сделав так, чтобы дискриминатор решал задачу максимизации):
+\begin{flalign*}
+	\underset{\theta}{\min}\;\underset{\phi}{\max}\;\mathbb{E}_{x \sim p(x)}\log{D_{\phi}(x)} + \mathbb{E}_{z \sim p(z)}\log{[1 - D_{\phi}(G_{\theta}(z))]}.
+\end{flalign*}
+Получается, что генератор и дискриминатор пытаются оптимизировать одну функцию: генератор её минимизирует, а дискриминатор максимизирует. Обозначим эту функцию (минус бинарную кросс-энтропию) как  $\mathcal{L}_{\theta, \phi}$. Тогда эту задачу оптимизации можно записать в сокращённом виде:
+\begin{flalign*}
+	\underset{\theta}{\min}\;\mathcal{L}_{\theta, \phi}.
+\end{flalign*}
+\end{frame}
+
+\begin{frame}{Оптимальный дискриминатор}
+Исходная задача для дискриминатора:
+\begin{flalign*}
+	\underset{\phi}{\min}\;\mathbb{E}_{x \sim p(x)}\log{D_{\phi}(x)} + \mathbb{E}_{\hat{x} \sim q(x)} \log{[1 - D_{\phi}(\hat{x})]}.
+\end{flalign*}
+В непрерывной форме:
+\begin{flalign*}
+	\int \Big[p(x)\log{D(x)} + q(x)\log{[1 - D(x)]}\Big]\, \mathrm{d}x.
+\end{flalign*}
+Мы хотим максимизировать это выражение по $D(x)$ для каждого x. Дифференцируем подынтегральное выражение по $D(x)$:
+\begin{flalign*}
+	\frac{\mathrm{d}}{\mathrm{d}D}\Big[p(x)\log{D(x)} + q(x)\log{[1 - D(x)]}\Big] = \frac{p(x)}{D(x)} - \frac{q(x)}{1 - D(x)} = 0
+\end{flalign*}
+Оптимальный дискриминатор $D^{*}$ при любом фиксированном генераторе $G$:
+\begin{flalign*}
+	D^{*}(x) = \frac{p(x)}{p(x) + q(x)}.
+\end{flalign*}
+\end{frame}
+
+\begin{frame}{Интуитивное понимание работы генератора в GAN}
+Интуиции работы метода обучения GAN со стороны генератора можно сформулировать следующим образом:
+\begin{enumerate}
+	\item Мы замеряем, насколько реалистичными являются сгенерированные сэмплы $\hat{x}_{1},\dots, \hat{x}_{n}$, используя для этого оптимальный дискриминатор $D^{*}(x)$.
+	\item Мы хотим увеличить отклик дискриминатора на каждом сэмпле, т.е. пытаемся модифицировать каждый предсказанный элемент $\hat{x}_{i}$ так, чтобы на нём стало выше значение $D^{*}(\hat{x}_{i})$.
+	\item Как нужно модифицировать плотность $q(x)$, чтобы она стала ближе к $p(x)$, если к плотности распределения мы имеем доступ только через сэмплы из него?
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Уменьшение расстояния между распределениями (1)}
+Подставив выражение для оптимального дискриминатора в $\mathcal{L}$, мы избавимся от внутренней максимизации в исходной задаче и оставим только внешнюю минимизацию по параметрам генератора. Мы получим в явном виде функцию потерь, которую минимизирует генератор, обозначим её за $\mathcal{D}_{\theta}$:
+\begin{flalign*}
+	\mathcal{D}_{\theta} = \underset{\phi}{\max}\;\mathcal{L}_{\theta, \phi} = \mathbb{E}_{x \sim p(x)} \log{D^{*}(x)} + \mathbb{E}_{x \sim q(x)}\log{[1 - D^{*}(x)]} = 
+\end{flalign*}
+\begin{flalign*}
+	= \mathbb{E}_{x \sim p(x)} \log{\frac{p(x)}{p(x) + q(x)}} + \mathbb{E}_{x \sim q(x)}\log{\Bigg[1 - \frac{p(x)}{p(x) + q(x)}\Bigg]} =
+\end{flalign*}
+\begin{flalign*}
+	= \int p(x)\log{\frac{p(x)}{p(x) + q(x)}}\,\mathrm{d}x + \int q(x)\log{\frac{q(x)}{p(x) + q(x)}}\,\mathrm{d}x.
+\end{flalign*}
+\end{frame}
+
+\begin{frame}{Уменьшение расстояния между распределениями (2)}
+Упростим выражение для $\mathcal{D}(x)$ еще раз, прибавив и отняв $\log{4}$, а также учитывая, что $\int p(x)\,\mathrm{d}x = 1$ и $\int q(x)\,\mathrm{d}x = 1$:
+\begin{flalign*}
+	\mathcal{D}_{\theta} = -\log{4} + \int p(x)\log{\frac{2p(x)}{p(x) + q(x)}}\,\mathrm{d}x + \int q(x)\log{\frac{2q(x)}{p(x) + q(x)}}\,\mathrm{d}x 
+\end{flalign*}
+\begin{flalign*}
+	 = -\log{4} + KL\Big(p\;\Big|\Big|\;\frac{p + q}{2}\Big) + KL\Big(q\;\Big|\Big|\;\frac{p + q}{2}\Big)
+\end{flalign*}
+\begin{flalign*}
+	= -\log{4} + 2 \times JSD\big(p\;\big|\big|\;q\big).
+\end{flalign*}
+$KL$-дивергенция (Кульбака-Лейблера):
+\begin{flalign*}
+	KL\Big(P\;\Big|\Big|\;Q\Big) = \displaystyle\int P(x) \log{\frac{P(x)}{Q(x)}}\,\mathrm{d}x,
+\end{flalign*}
+которая показывает, насколько два распределения отличаются друг от друга. Через $JSD\big(p\;\big|\big|\;q\big)$ обозначаем дивергенцию Йенсена-Шеннона.
+\end{frame}
+
+\begin{frame}{Уменьшение расстояния между распределениями (3)}
+\begin{remark}
+	Получается, что при оптимальном дискриминаторе генератор, решая внешнюю задачу оптимизации, уменьшает расстояние между распределениями реальных и фейковых данных, действительно приближая их друг к другу.
+\end{remark}
+\par\medskip
+Исходя из этого и предполагая, что параметризация генератора и дискриминатора позволяет достичь оптимума, мы можем сформулировать алгоритм обучения GAN.
+\end{frame}
+
+\begin{frame}{Алгоритм обучения GAN}
+\begin{enumerate}
+	\item Решить внутреннюю задачу максимизации по $\phi$, повторяя шаги ниже до сходимости по параметрам дискриминатора $\phi$ ко оптимальному значению $\phi^{*}$:
+	\begin{itemize}
+		\item Составить мини-батч сэмплов шума $z_{1},\dots, z_{n}$ из $p(z)$;
+		\item Составить мини-батч сэмплов данных $x_{1},\dots, x_{n}$ из $p(x)$;
+		\item Обновить дикриминатор, сделав шаг вверх по его градиенту:
+			\begin{flalign*}
+				\nabla_{\phi}\frac{1}{n}\displaystyle\sum_{i = 1}^{n}\bigg[\log{D_{\phi}(x_{i})} + \log\Big(1 - D_{\phi}\big(G_{\theta}(z_{i})\big)\Big)\bigg].
+			\end{flalign*}
+	\end{itemize}
+	\item Сделать шаг SGD для внешней задачи минимизации по $\theta$:
+	\begin{itemize}
+		\item Составить мини-батч сэмплов шума $z_{1},\dots, z_{n}$ из $p(z)$;
+		\item Обновить генератор, сделав шаг вниз по его градиенту:
+			\begin{flalign*}
+				\nabla_{\theta}\frac{1}{n}\displaystyle\sum_{i = 1}^{n}\log\Big(1 - D_{\phi^{*}}\big(G_{\theta}(z_{i})\big)\Big) = \frac{1}{n}\displaystyle\sum_{i = 1}^{n}-\frac{\nabla_{\theta}D_{\phi^{*}}\big(G_{\theta}(z_{i})\big)}{1 - D_{\phi^{*}}\big(G_{\theta}(z_{i})\big)}.
+			\end{flalign*}
+	\end{itemize}
+\end{enumerate}	
+\end{frame}
+
+\begin{frame}{Качественная оценка модели}
+Для качественной оценки изображений, созданных генератором, используем следующие характеристики:
+\begin{enumerate}
+	\item Сходство с изображениями обучающей выборки;
+	\item Отсутствие дубликатов из обучающей выборки;
+	\item Разнообразие изображений;
+	\item Отсутствие артефактов;
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Frechet Inception Distance}
+\textbf{Принцип работы}: \textbf{FID} сравнивает два распределения высокоуровневых признаков для реальных и сгенерированных картинок, используя в качестве их приближения многомерные гауссианы.
+\par\medskip
+Для измерения расстояния между этими двумя распределениями используется метрика Вассерштейна:
+\begin{flalign*}
+	\textbf{FID} = ||\mu - \hat{\mu}||^{2} - \textbf{Tr}\Big(\Sigma + \hat{\Sigma} - 2\big(\Sigma\hat{\Sigma}\big)^{\frac{1}{2}}\Big),
+\end{flalign*}
+где $\mu \in \mathbb{R}^{C}$ и $\Sigma \in \mathbb{R}^{C \times C}$~--- среднее и матрица ковариаций глубоких признаков $F_{i} \in \mathbb{R}^{C \times H \times W}$, которые считаются по выборке из $N$ реальных картинок. При этом как средние, так и матрицы ковариаций считаются по объединению всех признаков со всех картинок без учёта пространственной размерности. То же самое делается для сгенерированных картинок, для них средние и ковариации обозначены как $\hat{\mu}$ и $\hat{\Sigma}$.
+\end{frame}
+
+\begin{frame}{Интерполяции в скрытом пространстве}
+Возьмём два случайных вектора $z_{1}$ и $z_{2}$ из $p(z)$. Рассмотрим все векторы, которые лежат между ними $z = \alpha z_{1} + (1 - \alpha)z_{2}$, где $\alpha \in [0, 1]$. К каждому такому вектору $z$ применим наш генератор и получим $\hat{x}$  для промежуточных векторов и $\hat{x}_{1}$, $\hat{x}_{2}$ для $z_{1}$, $z_{2}$. Для правильно обученного \textbf{GAN} мы увидим следующую картинку: при изменении коэффициента $\alpha$ изображение $\hat{x}$ должно плавно меняться и перетекать из $\hat{x}_{1}$ в $\hat{x}_{2}$. При этом каждая промежуточная картинка должна быть так же реалистичным сэмплом.
+\par\smallskip
+\begin{figure}[h!]
+  \includegraphics[width=0.8 \textwidth]{pict_2}
+\end{figure}
+\end{frame}
+
+\begin{frame}{Проблемы обучения GAN}
+Большинство GAN подвержено следующим проблемам:
+\begin{enumerate}
+	\item \textbf{Схлопывание мод распределения}: генератор выдает ограниченное количество разных образцов;
+	\item \textbf{Проблема стабильности обучения}: параметры модели дестабилизируются и не сходятся;
+	\item \textbf{Исчезающий градиент}: дискриминатор становится слишком сильным, а градиент генератора исчезает и обучение не происходит;
+	\item \textbf{Проблема запутывания}: выявление корреляции в признаках, не связанных (слабо связанных) в реальном мире;
+	\item Высокая чувствительность к гиперпараметрам.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Рекомендации при обучении GAN}
+Практические советы, которые могут помочь при обучении GAN:
+\begin{enumerate}
+	\item Нормализация данных. Все признаки в диапазоне $[-1, 1]$;
+	\item Замена функции ошибки для $G$ с $\min\log{(1 - D)}$ на $\max\log{D}$, так как исходный вариант имеет маленький градиент на раннем этапе обучения и большой градиент при сходимости, а предложенный наоборот;
+	\item Сэмплирование из многомерного нормального распределения вместо равномерного;
+	\item Использовать метки для данных, если они имеются, то есть обучать дискриминатор еще и классифицировать образцы.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Conditional GAN}
+$y$~--- дополнительное условие для генератора и дискриминатора (Метка класса, изображение или данные из других моделей):
+\begin{flalign*}
+	\underset{\theta}{\min}\;\underset{\phi}{\max}\;\mathbb{E}_{x \sim p(x)}\log{D_{\phi}(x|y)} + \mathbb{E}_{z \sim p(z)}\log{[1 - D_{\phi}(G_{\theta}(z|y))]}.
+\end{flalign*}
+\begin{figure}[h!]
+  \includegraphics[width=0.7 \textwidth]{pict_3}
+\end{figure}
+\end{frame}
+
+\begin{frame}{StackGAN (1)}
+\textbf{StackGAN}~--- порождающая состязательная сеть для генерации фото-реалистичных изображений исходя из текстового описания. Генерировать фото-реалистичные изображения на обычных \textbf{GAN} сложно, поэтому была придумана двух-этапная модель генерации:
+\begin{enumerate}
+	\item \textbf{Stage-I GAN} рисует скетчи с примитивными формами и цветами, основанные на текстовом описании, в низком разрешении. 		
+	\item \textbf{Stage-II GAN} принимает на вход изображения с первого этапа и текстовое описание, и генерирует изображение в высоком разрешении с фото-реалистичными деталями.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{StackGAN (2)}
+\begin{figure}[h!]
+  \includegraphics[width=0.65 \textwidth]{pict_7}
+  \caption{Пример работы порождающей состязателной сети для генерации фото-реалистичных изображений StackGAN}
+\end{figure}
+\end{frame}
+
+\begin{frame}{StackGAN, Stage-I}
+\begin{enumerate}
+	\item Conditioning Augmentation~--- $\mathcal{N}\left(\mu(\phi_t), \Sigma(\phi_t)\right)$, где $t$~--- текстовое описание, а $\phi_t$~--- векторное представление. 
+	\item Регуляризация: 
+		\begin{flalign*}
+			r = D_{KL} \left(\mathcal{N}\left(\mu(\phi_t), \Sigma(\phi_t)\right)\;||\;\mathcal{N}\left(0, I\right)\right).
+		\end{flalign*}	
+	\item Тренировка дискриминатора $D_0$ и генератора $G_0$:
+		\begin{flalign*}	
+		 L_{D_0} =  \mathbb{E}_{\left(I_0, t\right)\sim p(x)} \left[\log D_0 \left(I_0,\phi_t\right)\right] 
+		\end{flalign*}
+		\begin{flalign*}	
+		 + E_{z\sim t, t\sim p(x)} \left[\log \left(1- D_0\left(G_0(z,\hat{c}_{0}), \phi_t\right)\right)\right];
+		\end{flalign*}
+		\begin{flalign*}	
+		L_{G_0} =  \mathbb{E}_{z\sim t, t\sim p(x)} \left[\log \left(1- D_0\left(G_0(z,\hat{c}_{0}), \phi_t\right)\right)\right] + \lambda r,
+		\end{flalign*}
+где реальное изображение $I_{0}$ и описание текста $t$ берутся из реального распределения данных $p(x)$, $z$ --- шумовой вектор.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{StackGAN, Stage-II}
+\begin{flalign*}		
+	L_{D} = \mathbb{E}_{\left(I, t\right)\sim p(x)} [\log D (I,\phi_t)] +  \mathbb{E}_{s_0\sim p_{C_0}, t\sim p(x)} [\log (1- D(G(s_0,\hat{c}), \phi_t))];
+\end{flalign*}	
+\begin{flalign*}	
+	L_{G} =   \mathbb{E}_{s_0\sim p_{C_0}, t\sim p(x)}  \left[\log \left(1- D\left(G(s_0,\hat{c}), \phi_t\right)\right)\right] + \lambda r ,
+\end{flalign*}	
+где $s_0 = G_0\left(z, \hat{c}_{0}\right)$~--- результат работы генератора \textbf{Stage-I GAN}.
+\par\smallskip
+\begin{figure}[h!]
+  \includegraphics[width=1 \textwidth]{pict_4}
+\end{figure}	
+\end{frame}
+
+\begin{frame}{LAPGAN (1)}
+\textbf{LAPGAN}~--- генеративная параметрическая модель, представленная пирамидой лапласианов с каскадом сверточных нейронных сетей внутри, которая генерирует изображения постепенно от исходного изображения с низким разрешением к изображению с высоким. На каждом уровне пирамиды обучается сверточная генеративная модель, используя подход порождающих состязательных сетей. Такая стратегия позволяет декомпозировать задачу генерации изображений на последовательность уровней, что упрощает ее решение.
+\par\medskip
+\textbf{Пирамида лапласианов}~--- линейное обратимое представление изображений, состоящее из набора частотных полос изображений.
+\end{frame}
+
+\begin{frame}{LAPGAN (2)}
+\begin{enumerate}
+	\item Пусть $d(\cdot)$ --- операция сжатия изображения размера $j\times j$ так, что новое изображение $d(I)$ имеет размеры $j/2 \times j/2$
+	\item $u(\cdot)$ --- операция расширения такая, что $u(I)$ имеет размеры $2j \times 2j$.
+\end{enumerate}
+\par\smallskip
+Тогда пирамида гауссианов имеет вид $\mathcal{G}(I) = \left[I_0,I_1,\ldots, I_k\right]$, где $I_0 = I$ и $I_k$ представляет собой $k$ раз выполненное применение $d(\cdot)$.
+\par\smallskip
+Коэффициенты $h_k$ на каждом уровне пирамиды:
+\begin{flalign*}	 
+	h_k = \mathcal{L}_k(I) = \mathcal{G}_k(I) - u(\mathcal{G}_{k+1}(I)) = I_k - u\left(I_{k+1}\right).
+\end{flalign*}
+\end{frame}
+
+\begin{frame}{LAPGAN (3)}
+Интуитивно каждый уровень захватывает структуру изображения. Конечный слой пирамиды лапласианов $h_k$ это не разница изображений, а низко-частотное представление равное гаусиану $h_k = I_k$. Реконструкция по пирамиде лапласианов происходит обратным проходом по ней: $I_k = u(I_{k + 1}) + h_k$.
+\par\medskip
+Подход представленный в \textbf{LAPGAN} работает по такому же принципу, только на каждому шаге вместо коэфициентов $h_k$  используются генераторы $\{G_0,\dots, G_k\}$, каждый из которых захватывает распределение коэфициентов $h_k$ для реальных изображений на разных уровнях пирамиды лапласиана:
+\begin{flalign*}
+	\tilde{I}_k = u(\tilde{I}_{k + 1}) + \tilde{h}_k = u(\tilde{I}_{k + 1}) + G_k\big(z_k, u(\tilde{I}_{k + 1})\big).
+\end{flalign*}
+\end{frame}
+
+\begin{frame}{LAPGAN (4)}
+\begin{figure}[h!]
+  \includegraphics[width=0.9 \textwidth]{pict_5}
+  \caption{Процедура семплинга для модели LAPGAN}
+\end{figure}	
+\begin{figure}[h!]
+  \includegraphics[width=0.9 \textwidth]{pict_6}
+  \caption{Процедура обучения модели LAPGAN}
+\end{figure}	
+\end{frame}
+\end{document}
