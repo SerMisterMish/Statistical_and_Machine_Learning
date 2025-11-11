@@ -41,3 +41,7 @@ __pycache__
 
 nn_image/nn_image_conv/data/oxford-iiit-pet
 nn_image/nn_image_conv/data/cifar-10-batches-py
+nn_image/gan/data
+nn_image/gan/gan_samples
+nn_image/gan/discriminator.pth
+nn_image/gan/generator.pth
