@@ -1,0 +1,409 @@
+\documentclass[unicode, notheorems, handout]{beamer}
+
+\usetheme[numbers,totalnumbers,compress, nologo]{Statmod}
+\usefonttheme[onlymath]{serif}
+\setbeamertemplate{navigation symbols}{}
+
+\mode<handout> {
+  \usepackage{pgfpages}
+  %\setbeameroption{show notes}
+  %\pgfpagesuselayout{2 on 1}[a4paper, border shrink=5mm]
+  \setbeamercolor{note page}{bg=white}
+  \setbeamercolor{note title}{bg=gray!10}
+  \setbeamercolor{note date}{fg=gray!10}
+}
+
+\usepackage[T2A]{fontenc}
+\usepackage[utf8x]{inputenc}
+\usepackage[russian]{babel}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes}
+\usepackage{ragged2e}
+\usepackage{subcaption}
+\usepackage{mathtools}
+\usepackage{array}
+
+\newtheorem{corollary}{Следствие}
+\newtheorem{proposition}{Предложение}
+\newtheorem{definition}{Определение}
+
+\title[Трансформеры]{Трансформеры}
+
+\institute[Санкт-Петербургский Государственный Университет]{%
+  \small
+  Санкт-Петербургский государственный университет\\
+  Кафедра статистического моделирования\\
+  Семинар <<Статистическое и машинное обучение>>
+}
+
+\date[Ноябрь 2025]{Санкт-Петербург, 2025}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Проблемы языковых моделей до появления внимания}
+  \footnotesize
+
+  \begin{block}{Модель в идеальном мире}
+    \begin{itemize}
+      \item \textbf{Effective} --- хорошо справляется с задачей, для
+        которой эта модель используется
+      \item \textbf{Efficient} --- оптимально потребляет ресурсы с
+        точки зрения памяти, CPU и т.д.
+    \end{itemize}
+  \end{block}
+
+  \begin{alertblock}{Ограничения RNN-архитектур}
+    \begin{itemize}
+      \item \textbf{Не Effective} --- потеря контекста
+        \begin{itemize}
+            \scriptsize
+          \item Вся информация о последовательности содержится в
+            скрытом состоянии, которое обновляется на каждом шаге
+          \item Длинные зависимости «забываются» из-за механизма
+            обновления состояния
+        \end{itemize}
+
+      \item \textbf{Не Efficient} --- невозможность  распараллеливания
+        \begin{itemize}
+            \scriptsize
+          \item Вычисления на шаге $t$ зависят от результатов шага $t-1$
+        \end{itemize}
+    \end{itemize}
+  \end{alertblock}
+
+  \vfill
+  \textbf{Вывод:} Требуется механизм прямого доступа к любой части
+  последовательности
+
+  \textbf{Решение}: Механизм \textit{Self-Attention} в архитектуре Transformer
+\end{frame}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% По обозначениям: x_n \in R^D - эмбеддинги токенов, X \in R^{N
+% \times D} - матрица из x_n  %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{frame}{Механизм внимания}
+  \begin{block}{Основные компоненты}
+    \begin{itemize}
+        \footnotesize
+      \item \textbf{Keys (K)} --- определяет релевантность токена для
+        различных запросов
+        \[k_{m} = \beta_k + W_k x_m\]
+      \item \textbf{Queries (Q)} ---  выражает информационные
+        потребности токена в контексте
+        \[q_n = \beta_q + W_q x_n\]
+      \item \textbf{Values (V)} --- информация, которую мы хотим извлечь
+        \[v_m = \beta_v + W_v x_m\]
+    \end{itemize}
+  \end{block}
+
+  \begin{itemize}
+      \scriptsize
+    \item $N$ --- длина контекста (количество входных токенов)
+    \item $D$ --- размерность векторного представления токена
+    \item $D_q$ --- размерность ключей/запросов/значений
+    \item $x_m\in \mathbb{R}^D$ --- векторное представление $m$-го токена
+    \item $X \in \mathbb{R}^{D \times N}$ --- матрица эмбеддингов
+    \item $\beta^* \in \mathbb{R}^{D_q}$, $W^* \in \mathbb{R}^{D_q
+      \times D_q}$ --- веса линейного слоя для
+      ключей/запросов/значений, общие для всех векторных представлений токенов
+    \item $K, V, Q \in \mathbb{R}^{D_q \times N}$ --- матрицы ключей,
+      значений и запросов
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Dot-product self-attention}
+  \begin{enumerate}
+      \scriptsize
+    \item Каждый токен $x_m$ представляется в виде ключа $k_m$,
+      значения $v_m$ и запроса~$q_m$
+    \item Для каждой пары $(n, m)$ вычисляется скалярное произведение
+      $k_m^T q_n$
+    \item Применяется softmax для получения вероятностного
+      распределения внимания
+    \item Вычисляется взвешенная сумма значений с весами внимания,
+      тем самым для каждого токена получаем его
+      контекстуализированное представление
+  \end{enumerate}
+  \vspace{-4.2ex}
+
+  \begin{figure}
+    \centering
+    \includegraphics[width=1.11\textwidth]{img/dot_prod_att.pdf}
+  \end{figure}
+\end{frame}
+
+\begin{frame}{Scaled dot-product self-attention}
+  \textbf{Проблемы}:
+  \begin{itemize}
+    \item Большие значения скалярных произведений приводят к малым градиентам
+    \item Softmax становится нечувствительным к небольшим изменениям входов
+  \end{itemize}
+  \vspace{1ex}
+
+  \textbf{Решение} --- масштабирование:
+  \[Sa(X) = V \cdot \text{Softmax}\left(\frac{K^T Q}{\sqrt{D_q}}\right)\]
+
+  При условии, что $k_i, q_i \sim \mathcal{N}(0,1)$ и независимы
+  $$
+  \text{Var}[k^T q] = \text{Var}\left[\sum_{i=1}^{D_q} k_i q_i\right]
+  = D_q \;\implies \;
+  \text{Var}\left[\frac{k^T q}{\sqrt{D_q}}\right] = 1.$$
+\end{frame}
+
+\begin{frame}{Multi-head attention}
+  \begin{itemize}
+    \item Вместо одного слоя внимания применяется несколько
+      параллельных «голов» внимания с разными весами и  размерностью $D/H$
+    \item Каждая голова изучает разные типы зависимостей
+  \end{itemize}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{img/mh_att.pdf}
+  \end{figure}
+\end{frame}
+
+\begin{frame}{Позиционное Кодирование (Positional encoding)}
+  Применение self-attention теряет информацию о порядке токенов в
+  исходной последовательности
+
+  \vspace{0.4cm}
+
+  Идея: добавить информацию о порядке на embedding-этапе
+
+  \begin{enumerate}
+    \item Абсолютная позиция: $X \mapsto X + P$, матрица $P$ может
+      быть фиксирована:
+      \begin{gather*}
+        P_{i, 2j} = \sin\left(\frac{i}{10'000^{2j / D}}\right),\\
+        P_{i, 2j + 1} = \cos\left(\frac{i}{10'000^{2j / D}}\right),
+      \end{gather*}
+      а может быть и обучаема
+
+    \item Относительная позиция: на самом деле нас интересует не
+      абсолютное расположение токенов, а относительное друг к другу.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{RoPE}
+  Есть много вариантов...
+  \begin{itemize}
+    \item Rotary Position Embedding (RoPE)
+      \begin{gather*}
+        k_m^\top q_n \mapsto \left\langle k_m, q_n\right\rangle =
+        g(x_m, x_n, n-m),\\
+        g(x_m, x_n, n - m) = x_n^\top W_q \mathbf{R}^d_{\Theta, n-m} W_kx_m,\\
+        \Theta = (\theta_i)_{i=1}^{D/2}, \qquad \theta_i=10'000^{-2(i-1)/D}
+      \end{gather*}
+  \end{itemize}
+  \[
+    \hspace*{-0.4cm}\scriptsize
+    \mathbf{R}^D_{\Theta,m} =
+    \begin{pmatrix}
+      \cos{m\theta_1}& -\sin{m\theta_1}&0&0&\cdots&0&0\\
+      \sin{m\theta_1}&\cos{m\theta_1}&0&0&\cdots&0&0 \\
+      0&0&\cos{m\theta_2}& -\sin{m\theta_2}&\cdots&0&0\\
+      0&0&\sin{m\theta_2}&\cos{m\theta_2}&\cdots&0&0 \\
+      \vdots&\vdots&\vdots&\vdots&\ddots&\vdots&\vdots\\
+      0&0&0&0&\cdots&\cos{m\theta_{D/2}}& -\sin{m\theta_{D/2}}\\
+      0&0&0&0&\cdots&\sin{m\theta_{D/2}}&\cos{m\theta_{D/2}}
+    \end{pmatrix}
+  \]
+  \vspace{0.1cm}
+
+  Модификации: NTK-aware RoPE, YaRN...
+\end{frame}
+
+\begin{frame}{ALiBi}
+  \begin{itemize}
+    \item Attention with Linear Biases (ALiBi)
+  \end{itemize}
+  \begin{figure}
+    \centering
+    \includegraphics[width=0.8\linewidth]{img/alibi.pdf}
+  \end{figure}
+  $m$ --- нетренируемый гиперпараметр, свой для каждой головы в MHA блоке
+\end{frame}
+
+\begin{frame}{Трансформерный слой}
+  Схема одного слоя трансформера (в изначальном виде):
+  \begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{img/tlayer_default.png}
+  \end{figure}
+
+  В матричной форме:
+  \begin{gather*}
+    X_{\mathrm{in}} \mapsto X_{\mathrm{Sa}} = X_{\mathrm{in}} +
+    \mathrm{MhSa}(X_{\mathrm{in}})\\
+    X_{\mathrm{Sa}}\mapsto X_{\mathrm{LN}} =
+    \mathrm{LayerNorm}(X_{\mathrm{Sa}})\\
+    x_i^{\mathrm{LN}} \mapsto x_i^{\mathrm{MLP}} = x_i^{\mathrm{LN}}
+    + \mathrm{MLP}(x_i^{\mathrm{LN}}),\quad i=1,\, 2,\, \dots,\, N\\
+    X_{\mathrm{out}} = \mathrm{LayerNorm}(X_{\mathrm{MLP}})
+  \end{gather*}
+\end{frame}
+
+\begin{frame}{Layer Normalization}
+  На входе --- набор векторов $x_i$ (напр. эмбеддинги)
+
+  \medskip
+
+  Для каждого $x_i$ независимо проводится следующая нормализация:
+  \begin{gather*}
+    \mu_i = \overline{x}_i,\quad \sigma_i^2 = \widehat{D}(x_i)\\
+    x_i \mapsto y = \frac{x_i - \mu_i}{\sqrt{\sigma_i^2 +
+    \varepsilon}} \mapsto z = \gamma_i y + \beta_i
+  \end{gather*}
+  Параметры $\gamma_i,\, \beta_i$ обучаемые
+
+  \bigskip
+
+  Позже было показано, что применение слоя LayerNorm перед attention-
+  и MLP-блоками даёт более стабильные результаты
+\end{frame}
+
+\begin{frame}{Multi-Layer Perceptron (MLP)}
+  \begin{itemize}
+    \item Блок с обычной полносвязной сетью
+    \item Размер входа и выхода должен совпадать (для Residual Connection)
+    \item Размеры скрытых слоёв обычно в несколько (2-4) раз больше
+      размеров входов
+    \item Обычно используется всего 1 скрытый слой (Feed Forward)
+    \item Активация обычно $\mathrm{GELU}(x) = x\Phi(x)$
+  \end{itemize}
+  \begin{figure}
+    \includegraphics[width=0.9\linewidth]{img/gelu.pdf}
+  \end{figure}
+\end{frame}
+
+\begin{frame}{Трансформерная модель-энкодер}
+  \begin{tikzpicture}[
+      >=Stealth,
+      node/.style={draw, rectangle, minimum width=2cm, minimum
+      height=1cm, align=center},
+      process/.style={draw, rectangle, rounded corners, minimum
+      height=1cm, minimum width=2cm, align=center}
+    ]
+
+    % Nodes for input
+    \node (input) [process, rotate=270] at(0, 0) {Tokenization};
+    \node (embedding) [process, rotate=270] at(1.5, 0) {Embedding};
+
+    % Nodes for input tokens
+    \node (x1) at (3, 2)  {$x_1$};
+    \node (x2) at (3, 1)  {$x_2$};
+    \node (x3) at (3, 0)  {$x_3$};
+    \node (xn) at (3, -2) {$x_n$};
+    \node      at (3, -0.9) {$\cdots$};
+
+    \node (transformer1) [process, rotate=270] at (5, 0) {Transformer
+    layer \#1};
+    \node (transformerDots) at (6.5, 0) {$\cdots$};
+    \node (transformerK) [process, rotate=270] at (8, 0) {Transformer
+    layer \#$K$};
+
+    \node (output) [process, rotate=270] at (9.5, 0) {Output};
+
+    \draw[->] (input) -- (embedding);
+    \draw[->] (embedding) -- (x1);
+    \draw[->] (embedding) -- (x2);
+    \draw[->] (embedding) -- (x3);
+    \draw[->] (embedding) -- (xn);
+    \draw[->, dashed] (x1) -- (transformer1);
+    \draw[->, dashed] (x2) -- (transformer1);
+    \draw[->, dashed] (x3) -- (transformer1);
+    \draw[->, dashed] (xn) -- (transformer1);
+    \draw[->] (transformer1) -- (transformerDots);
+    \draw[->] (transformerDots) -- (transformerK);
+    \draw[->] (transformerK) -- (output);
+  \end{tikzpicture}
+
+  \medskip
+
+  Применение: классификация текстов (выход --- вероятности классов),
+  угадывание замаскированных токенов в предложении (выход ---
+  вероятности токенов, пример --- BERT)
+\end{frame}
+
+\begin{frame}{Трансформерная модель-декодер}
+  Та же структура, что и у энкодера, но таргеты --- следующий токен в
+  последовательности
+
+  \medskip
+
+  Так как задача --- предсказывать следующий токен, то нельзя
+  заглядывать вперёд (авторегрессионная модель, вероятность каждого
+  токена должна зависеть только от предыдущих)
+
+  \medskip
+
+  Но в self-attention для каждого токена учитываются и все последующие токены
+
+  \medskip
+
+  Решение: зафиксировать $a(x_m, x_n) = 0$ для $m < n$
+
+  То же самое:
+  \begin{gather*}
+    \mathrm{MaskedSa}(X) = V \cdot \mathrm{Softmax}(K^\top Q + M),\\
+    M(m, n) = \left\{
+      \begin{array}{rl}
+        0, &  m \geqslant n\\
+        -\infty, & m < n
+      \end{array}
+      \right.
+    \end{gather*}
+  \end{frame}
+
+  \begin{frame}{Трансформенная модель Seq2Seq (энкодер-декодер)}
+    Эмбеддинг входной последовательность подаётся вход в сеть
+    энкодер-трансформеров
+
+    \smallskip
+
+    Эмбеддинг целевой (target) последовательности подаётся на вход в
+    сеть модифицированных декодер-трансформеров (появляется
+    cross-attention (о нём позже))
+
+    \medskip
+
+    Схема обновлённого слоя декодер-трансформера:
+    \begin{figure}
+      \centering
+      \includegraphics[width=\linewidth]{img/tlayer_decod2.png}
+    \end{figure}
+
+  \end{frame}
+
+  \begin{frame}{Cross-Attention}
+    Для подсчёта ключей и значений используются выходы энкодер-трансформера
+    \begin{gather*}
+      K = W_k X_{\mathrm{enc}} + \beta_k\\
+      V = W_v X_{\mathrm{enc}} + \beta_v
+    \end{gather*}
+
+    Для запросов используются (преобразованные) входы декодер-трансформера
+    \[
+      Q = W_q X_{\mathrm{dec}} + \beta_q
+    \]
+
+    В остальном  всё то же, что и для обычного Self-Attention
+    \[
+      \mathrm{CA}(X) = V \cdot \mathrm{Softmax}(K^\top Q)
+    \]
+  \end{frame}
+
+  \begin{frame}{Итоговая Схема Трансформер-Модели}
+    \begin{figure}
+      \centering
+      \includegraphics[height=220pt]{img/tmodel_full.png}
+    \end{figure}
+  \end{frame}
+
+  \end{document}
