@@ -4,17 +4,8 @@
 \usefonttheme[onlymath]{serif}
 \setbeamertemplate{navigation symbols}{}
 
-\mode<handout> {
-  \usepackage{pgfpages}
-  %\setbeameroption{show notes}
-  %\pgfpagesuselayout{2 on 1}[a4paper, border shrink=5mm]
-  \setbeamercolor{note page}{bg=white}
-  \setbeamercolor{note title}{bg=gray!10}
-  \setbeamercolor{note date}{fg=gray!10}
-}
-
 \usepackage[T2A]{fontenc}
-\usepackage[utf8x]{inputenc}
+\usepackage[utf8]{inputenc}
 \usepackage[russian]{babel}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta, positioning, shapes}
@@ -81,11 +72,6 @@
 
   \textbf{Решение}: Механизм \textit{Self-Attention} в архитектуре Transformer
 \end{frame}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% По обозначениям: x_n \in R^D - эмбеддинги токенов, X \in R^{N
-% \times D} - матрица из x_n  %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{frame}{Механизм внимания}
   \begin{block}{Основные компоненты}
@@ -168,6 +154,82 @@
   \end{figure}
 \end{frame}
 
+\begin{frame}{Multi-Query Attention}
+  \begin{tikzpicture}[
+      >=Stealth,
+      node/.style={draw, rectangle, minimum width=2cm, minimum
+      height=1cm, align=center},
+      process/.style={draw, rectangle, rounded corners, minimum
+      height=1cm, minimum width=2cm, align=center}
+    ]
+    \node (kv) at (0, 0) [process] {KV head\\$V = W_v X + \beta_v$\\
+    $K = W_k X + \beta_k$};
+
+    \node (q1) at (-3, -2) [process] {Query head
+      \#1
+      \\$Q_1 = W_{q,1} X + \beta_{q,1} $\\
+    $Sa_1(X) = V \cdot\mathrm{Sm}(K^T Q_1)$};
+
+    \node (qh) at (3, -2) [process] {Query head \#H\\$Q_H =
+      W_{q,H} X + \beta_{q,H}$\\
+    $Sa_H(X) = V \cdot \mathrm{Sm}(K^T Q_H)$};
+
+    \node (dots) at (0, -2) {$\cdots$};
+
+    \node (output) at (0, -4) [process] {Multi-query
+      self-attention\\$MhSa(X) = W_c \cdot
+    \mathrm{cat}(Sa_1(X), \ldots, Sa_H(X))$};
+
+    \draw[->] (kv) -- (q1);
+    \draw[->] (kv) -- (qh);
+    \draw[->] (q1) -- (output);
+    \draw[->] (qh) -- (output);
+
+  \end{tikzpicture}
+
+  \vspace{0.2cm}
+
+  $\mathrm{Sm} = \mathrm{Softmax}$
+\end{frame}
+
+\begin{frame}{Grouped-Query Attention}
+  \begin{tikzpicture}[
+      >=Stealth,
+      node/.style={draw, rectangle, minimum width=2cm, minimum
+      height=1cm, align=center},
+      process/.style={draw, rectangle, rounded corners, minimum
+      height=1cm, minimum width=2cm, align=center}
+    ]
+    \node (kv1) at (-3, 0) [process] {KV head \#1};
+    \node (kvl) at (3, 0) [process] {KV head \#($H / G$)};
+
+    \node (q11) at (-4.5, -2.5) [process] {Query \\head \\\#1};
+    \node (q1d) at (-1.5, -2.5) [process] {Query \\head \\\#G};
+
+    \node (qg1) at (1.5, -2.5) [process] {Query \\head \\\#($H - $\\$G + 1$)};
+    \node (qgd) at (4.5, -2.5) [process] {Query \\head \\\#($H$)};
+
+    \node (dots0) at (0, 0) {$\cdots$};
+    \node (dots1) at (-3, -2.5) {$\cdots$};
+    \node (dots2) at (0, -2.5) {\huge $\cdots$};
+    \node (dots3) at (3, -2.5) {$\cdots$};
+
+    \node (output) at (0, -5) [process] {Multi-query
+      self-attention\\$MhSa(X) = W_c \cdot
+    \mathrm{cat}(Sa_1(X), \ldots, Sa_H(X))$};
+
+    \draw[->] (kv1) -- (q11);
+    \draw[->] (kv1) -- (q1d);
+    \draw[->] (kvl) -- (qg1);
+    \draw[->] (kvl) -- (qgd);
+    \draw[->] (q11) -- (output);
+    \draw[->] (q1d) -- (output);
+    \draw[->] (qg1) -- (output);
+    \draw[->] (qgd) -- (output);
+
+  \end{tikzpicture}
+\end{frame}
+
 \begin{frame}{Позиционное Кодирование (Positional encoding)}
   Применение self-attention теряет информацию о порядке токенов в
   исходной последовательности
@@ -201,19 +263,21 @@
         \Theta = (\theta_i)_{i=1}^{D/2}, \qquad \theta_i=10'000^{-2(i-1)/D}
       \end{gather*}
   \end{itemize}
-  \[
-    \hspace*{-0.4cm}\scriptsize
-    \mathbf{R}^D_{\Theta,m} =
-    \begin{pmatrix}
-      \cos{m\theta_1}& -\sin{m\theta_1}&0&0&\cdots&0&0\\
-      \sin{m\theta_1}&\cos{m\theta_1}&0&0&\cdots&0&0 \\
-      0&0&\cos{m\theta_2}& -\sin{m\theta_2}&\cdots&0&0\\
-      0&0&\sin{m\theta_2}&\cos{m\theta_2}&\cdots&0&0 \\
-      \vdots&\vdots&\vdots&\vdots&\ddots&\vdots&\vdots\\
-      0&0&0&0&\cdots&\cos{m\theta_{D/2}}& -\sin{m\theta_{D/2}}\\
-      0&0&0&0&\cdots&\sin{m\theta_{D/2}}&\cos{m\theta_{D/2}}
-    \end{pmatrix}
-  \]
+  {\scriptsize
+    \[
+      \hspace*{-0.4cm}
+      \mathbf{R}^D_{\Theta,m} =
+      \begin{pmatrix}
+        \cos{m\theta_1}& -\sin{m\theta_1}&0&0&\cdots&0&0\\
+        \sin{m\theta_1}&\cos{m\theta_1}&0&0&\cdots&0&0 \\
+        0&0&\cos{m\theta_2}& -\sin{m\theta_2}&\cdots&0&0\\
+        0&0&\sin{m\theta_2}&\cos{m\theta_2}&\cdots&0&0 \\
+        \vdots&\vdots&\vdots&\vdots&\ddots&\vdots&\vdots\\
+        0&0&0&0&\cdots&\cos{m\theta_{D/2}}& -\sin{m\theta_{D/2}}\\
+        0&0&0&0&\cdots&\sin{m\theta_{D/2}}&\cos{m\theta_{D/2}}
+      \end{pmatrix}
+    \]
+  }
   \vspace{0.1cm}
 
   Модификации: NTK-aware RoPE, YaRN...
@@ -331,6 +395,19 @@
   вероятности токенов, пример --- BERT)
 \end{frame}
 
+\begin{frame}{BERT}
+  \begin{itemize}
+    \item Величина словаря: $M=30k$ токенов
+    \item Длина контекста: $N=512$ токенов
+    \item Размерность эмбеддинга: $D=1024$
+    \item Размерности $K,\, V,\, Q:\: 64$
+    \item Количество голов в MHA: $H = 16$
+    \item Количество трансформерных слоёв: $K = 24$
+    \item Размерность MLP: $D_{\mathrm{MLP}}=4096$
+    \item Общее количество параметров: $340 \cdot 10^{6}$
+  \end{itemize}
+\end{frame}
+
 \begin{frame}{Трансформерная модель-декодер}
   Та же структура, что и у энкодера, но таргеты --- следующий токен в
   последовательности
@@ -352,13 +429,29 @@
   То же самое:
   \begin{gather*}
     \mathrm{MaskedSa}(X) = V \cdot \mathrm{Softmax}(K^\top Q + M),\\
-    M(m, n) = \left\{
+    M(m, n) =
+    \left\{
       \begin{array}{rl}
         0, &  m \geqslant n\\
         -\infty, & m < n
       \end{array}
       \right.
     \end{gather*}
+  \end{frame}
+
+  \begin{frame}{GPT}
+    Для GPT-3:
+
+    \begin{itemize}
+      \item Величина словаря: неизвестно
+      \item Длина контекста: $N=2048$ токенов
+      \item Размерность эмбеддинга: $D=12288$
+      \item Размерности $K,\, V,\, Q:\: 128$
+      \item Количество голов в MHA: $H = 96$
+      \item Количество трансформерных слоёв: $K = 96$
+      \item Размерность MLP: неизвестно
+      \item Общее количество параметров: $175 \cdot 10^{9}$
+    \end{itemize}
   \end{frame}
 
   \begin{frame}{Трансформенная модель Seq2Seq (энкодер-декодер)}
@@ -406,4 +499,65 @@
     \end{figure}
   \end{frame}
 
+  \begin{frame}{Проблема квадратичности Self-Attention}
+    Честный подсчёт SA имеет временную трудоёмкость $O(N^2)$, где $N$
+    --- количество токенов в последовательности
+
+    \vspace{0.4cm}
+
+    Варианты оптимизации:
+    \begin{itemize}
+      \item Параллелизм и кэширование матриц $K$ и $V$
+        \begin{figure}
+          \centering
+          \includegraphics[width=0.5\linewidth]{img/kv_cache.png}
+        \end{figure}
+      \item Использование приближений с меньшей трудоёмкостью
+    \end{itemize}
+  \end{frame}
+
+  \begin{frame}{Sliding Window Attention (Longformer)}
+    Считаем SA по некоторому окну\dots
+    \begin{figure}
+      \centering
+      \includegraphics[width=\linewidth]{img/longformer.png}
+    \end{figure}
+
+    \vspace{0.4cm}
+
+    Эффективность зависисит от окна
+  \end{frame}
+
+  \begin{frame}{Linear Attention --- Linformer}
+    Переобозначим $Q,\, K,\, V$ --- входные эмбеддинги, тогда SA считается как:
+    \[
+      \mathrm{Sa}(QW_i^Q, KW_i^K, VW_i^V)=
+      \underbrace{\mathrm{Softmax}\left[\frac{QW_i^Q(KW_i^K)^T}{\sqrt{d_k}}\right]}_{P}VW_i^V,
+    \]
+    где $W_i^{*}$ --- обучаемые матрицы
+
+    \vspace{0.2cm}
+
+    Можно доказать, что матрица $P$ хорошо приближается меньшими рангами
+
+    \vspace{0.2cm}
+
+    Но низкоранговое приближение $P$ сичтается долго
+
+    Зато быстро можно спроектировать $K$ и $V$
+  \end{frame}
+  \begin{frame}{Linear Attention --- Linformer}
+    \begin{align*}
+      &\mathrm{Sa}(QW_i^Q, E_iKW_i^K,
+      F_iVW_i^V)\\
+      &=\underbrace{\mathrm{Softmax}\left(\frac{QW_i^Q(E_iKW_i^K)^T}{\sqrt{d_k}}\right)}_{\bar{P}}\cdot
+      F_iVW_i^V
+    \end{align*}
+  \end{frame}
+
+  \begin{frame}{Linear Attention --- Linear Transformer}
+    \begin{figure}
+      \includegraphics[width=\linewidth]{img/linear_transformer.png}
+    \end{figure}
+  \end{frame}
   \end{document}
